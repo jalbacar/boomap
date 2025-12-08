@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BoomApp WebSocket Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1e1e1e; color: #fff; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .online { background: #2d5016; }
+        .offline { background: #5c1616; }
+        .data-box { background: #2d2d2d; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .connect { background: #4CAF50; color: white; border: none; }
+        .disconnect { background: #f44336; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 BoomApp WebSocket Test</h1>
+        
+        <div id="status" class="status offline">
+            Estado: <span id="statusText">Desconectado</span>
+        </div>
+        
+        <button class="connect" onclick="connect()">Conectar</button>
+        <button class="disconnect" onclick="disconnect()">Desconectar</button>
+        
+        <h2>Datos OBD</h2>
+        <div class="data-box" id="obdData">Esperando datos...</div>
+        
+        <h2>Datos Sensores</h2>
+        <div class="data-box" id="sensorData">Esperando datos...</div>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function connect() {
+            ws = new WebSocket('ws://localhost:8000/ws/vehicle');
+            
+            ws.onopen = () => {
+                document.getElementById('status').className = 'status online';
+                document.getElementById('statusText').textContent = 'Conectado';
+                console.log('✓ Conectado al WebSocket');
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log('Mensaje recibido:', message);
+                
+                if (message.type === 'obd') {
+                    displayOBD(message.data);
+                } else if (message.type === 'sensors') {
+                    displaySensors(message.data);
+                } else if (message.type === 'initial') {
+                    displayOBD(message.data.obd);
+                    displaySensors(message.data.sensors);
+                }
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('status').className = 'status offline';
+                document.getElementById('statusText').textContent = 'Desconectado';
+                console.log('✗ Desconectado del WebSocket');
+            };
+            
+            ws.onerror = (error) => {
+                console.error('Error WebSocket:', error);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function displayOBD(data) {
+            const html = `
+                <strong>RPM:</strong> ${data.rpm?.toFixed(0) || 'N/A'}<br>
+                <strong>Velocidad:</strong> ${data.speed?.toFixed(0) || 'N/A'} km/h<br>
+                <strong>Temp Motor:</strong> ${data.coolant_temp?.toFixed(1) || 'N/A'} °C<br>
+                <strong>Acelerador:</strong> ${data.throttle?.toFixed(0) || 'N/A'} %<br>
+                <strong>Combustible:</strong> ${data.fuel_level?.toFixed(0) || 'N/A'} %
+            `;
+            document.getElementById('obdData').innerHTML = html;
+        }
+
+        function displaySensors(data) {
+            const html = `
+                <strong>Temperatura:</strong> ${data.temperature?.toFixed(1) || 'N/A'} °C<br>
+                <strong>Presión:</strong> ${data.pressure?.toFixed(1) || 'N/A'} kPa<br>
+                <strong>Humedad:</strong> ${data.humidity?.toFixed(1) || 'N/A'} %<br>
+                <strong>Vibración:</strong> ${data.vibration?.toFixed(2) || 'N/A'}
+            `;
+            document.getElementById('sensorData').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
