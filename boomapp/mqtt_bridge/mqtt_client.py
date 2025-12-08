@@ -69,12 +69,18 @@ class MQTTBridge:
     def publish_obd_data(self, obd_data):
         if self.connected:
             payload = json.dumps(obd_data)
-            self.client.publish(self.topic_obd, payload, qos=1)
+            result = self.client.publish(self.topic_obd, payload, qos=1)
+            print(f"→ OBD publicado: {result.rc} | RPM: {obd_data.get('rpm', 'N/A')}")
+        else:
+            print("✗ No conectado, no se puede publicar OBD")
     
     def publish_sensor_data(self, sensor_data):
         if self.connected:
             payload = json.dumps(sensor_data)
-            self.client.publish(self.topic_sensors, payload, qos=1)
+            result = self.client.publish(self.topic_sensors, payload, qos=1)
+            print(f"→ Sensores publicados: {result.rc} | Temp: {sensor_data.get('temperature', 'N/A')}")
+        else:
+            print("✗ No conectado, no se puede publicar sensores")
     
     def publish_status(self, status):
         if self.connected:
