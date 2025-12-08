@@ -55,14 +55,12 @@ pip install -r requirements.txt
 
 ### Requisitos Previos
 - Python 3.7+
-- Mosquitto MQTT Broker
+- MQTT Broker (Mosquitto local o HiveMQ Cloud)
 
-### Instalar Mosquitto
+### Opción A: Mosquitto Local (Desarrollo)
 
 **Windows:**
 ```bash
-# Descargar desde: https://mosquitto.org/download/
-# O con chocolatey:
 choco install mosquitto
 ```
 
@@ -75,6 +73,15 @@ sudo apt-get install mosquitto mosquitto-clients
 ```bash
 brew install mosquitto
 ```
+
+### Opción B: HiveMQ Cloud (Producción)
+
+1. Crear cuenta en https://console.hivemq.cloud/
+2. Crear cluster gratuito
+3. Anotar credenciales:
+   - Host: `xxxxx.s1.eu.hivemq.cloud`
+   - Port: `8883`
+   - Usuario y contraseña
 
 ### Instalar Dependencias Python
 
@@ -90,7 +97,9 @@ cd ..
 
 ## Uso Paso a Paso
 
-### Paso 1: Iniciar MQTT Broker
+### Paso 1: Configurar MQTT Broker
+
+**Opción A: Mosquitto Local**
 
 Abrir una terminal y ejecutar:
 
@@ -104,25 +113,38 @@ Deberías ver:
 1234567890: Opening ipv4 listen socket on port 1883.
 ```
 
-### Paso 2: Iniciar Backend API
+**Opción B: HiveMQ Cloud**
 
-Abrir una **segunda terminal** y ejecutar:
+Configurar variables de entorno en Railway (ver Paso 2)
 
-```bash
-cd backend-api
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+### Paso 2: Configurar Backend en Railway
+
+1. Subir código a GitHub
+2. Conectar Railway con el repositorio
+3. Configurar Root Directory: `backend-api`
+4. Configurar Variables de Entorno:
+
+**Para HiveMQ Cloud:**
+```
+MQTT_BROKER=tu-cluster.s1.eu.hivemq.cloud
+MQTT_PORT=8883
+MQTT_USERNAME=tu-usuario
+MQTT_PASSWORD=tu-password
+MQTT_USE_TLS=true
 ```
 
-Deberías ver:
+**Para Mosquitto Local (testing):**
 ```
-INFO:     Uvicorn running on http://0.0.0.0:8000
-✓ Backend conectado al MQTT Broker: localhost:1883
-✓ Backend API iniciado
+MQTT_BROKER=localhost
+MQTT_PORT=1883
 ```
+
+5. Railway desplegará automáticamente
+6. Obtener URL: `https://tu-app.railway.app`
 
 ### Paso 3: Iniciar Digital Twin (Simulador)
 
-Abrir una **tercera terminal** y ejecutar:
+Ejecutar:
 
 ```bash
 python main.py
@@ -130,81 +152,87 @@ python main.py
 
 Seguir las instrucciones:
 1. Seleccionar un escenario (1-6)
-2. Activar MQTT cuando pregunte (s)
-3. Usar broker: `localhost`
+2. Activar MQTT (s)
+3. Configurar broker:
+
+**Para HiveMQ Cloud:**
+```
+Broker: tu-cluster.s1.eu.hivemq.cloud
+TLS: s
+Usuario: tu-usuario
+Contraseña: ****
+```
+
+**Para Mosquitto Local:**
+```
+Broker: localhost
+```
 
 Deberías ver:
 ```
-✓ Conectado al broker MQTT: localhost:1883
+✓ Conectado al broker MQTT: tu-broker:8883 (TLS) como tu-usuario
 Starting ESP32 Digital Twin...
 === Simulación iniciada ===
+→ OBD publicado: 0 | RPM: 2500
+→ Sensores publicados: 0 | Temp: 26.5
 ```
 
 ### Paso 4: Probar el Sistema
 
-#### Opción A: API REST
-
-Abrir navegador o usar curl:
+#### Opción A: API REST (Railway)
 
 ```bash
+# Verificar conexión MQTT
+curl https://tu-app.railway.app/api/debug/mqtt
+
 # Estado completo del vehículo
-curl http://localhost:8000/api/vehicle/status
+curl https://tu-app.railway.app/api/vehicle/status
 
 # Solo datos OBD
-curl http://localhost:8000/api/vehicle/obd
+curl https://tu-app.railway.app/api/vehicle/obd
 
 # Solo sensores
-curl http://localhost:8000/api/vehicle/sensors
+curl https://tu-app.railway.app/api/vehicle/sensors
 
 # Documentación interactiva
-# Abrir en navegador: http://localhost:8000/docs
+# Abrir en navegador: https://tu-app.railway.app/docs
 ```
 
 #### Opción B: WebSocket (Tiempo Real)
 
-Abrir en navegador:
-```
-backend-api/test_websocket.html
+Editar `backend-api/test_websocket.html` y cambiar:
+```javascript
+ws = new WebSocket('wss://tu-app.railway.app/ws/vehicle');
 ```
 
-Click en "Conectar" y verás los datos actualizándose en tiempo real.
+Abrir en navegador y click en "Conectar".
 
 #### Opción C: Cliente MQTT de Prueba
 
-Abrir una **cuarta terminal**:
-
 ```bash
 python mqtt_test_client.py
+# Broker: tu-cluster.s1.eu.hivemq.cloud
 ```
 
-Verás todos los mensajes MQTT publicados por el digital twin.
-
-#### Opción D: Test Automatizado REST
-
-```bash
-cd backend-api
-python test_api.py
-```
-
-## Resumen de Terminales
+## Resumen de Componentes
 
 ```
-Terminal 1: mosquitto -v
-Terminal 2: cd backend-api && uvicorn app.main:app --reload
-Terminal 3: python main.py
-Terminal 4: python mqtt_test_client.py  (opcional)
+1. MQTT Broker: HiveMQ Cloud (o Mosquitto local)
+2. Backend API: Railway (https://tu-app.railway.app)
+3. Simulador: Local (python main.py)
+4. Cliente Test: python mqtt_test_client.py (opcional)
 ```
 
 ## Verificación
 
 Si todo funciona correctamente:
 
-✅ Terminal 1: Mosquitto muestra conexiones de clientes  
-✅ Terminal 2: Backend muestra "✓ Suscrito a topics del vehículo"  
-✅ Terminal 3: Simulador muestra datos del vehículo cada 2 segundos  
-✅ Terminal 4: Cliente MQTT muestra mensajes entrantes  
-✅ Navegador: API REST devuelve datos JSON  
-✅ Navegador: WebSocket muestra datos en tiempo real
+✅ HiveMQ Dashboard: Muestra clientes conectados  
+✅ Railway Logs: "✓ Backend conectado al MQTT Broker"  
+✅ Simulador: "→ OBD publicado: 0 | RPM: 2500"  
+✅ `/api/debug/mqtt`: `"connected": true`  
+✅ `/api/vehicle/status`: Devuelve datos del vehículo  
+✅ WebSocket: Muestra datos en tiempo real
 
 ## Módulos
 
@@ -284,5 +312,9 @@ telnet localhost 1883
 
 ## Documentación
 
+- [Uso del API REST y WebSocket](API_USAGE.md) ⭐ **Nuevo**
 - [MQTT Bridge](README_MQTT.md)
 - [Backend API](backend-api/README.md)
+- [Configuración HiveMQ](HIVEMQ_SETUP.md)
+- [Despliegue en Railway](backend-api/DEPLOY_RAILWAY.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
