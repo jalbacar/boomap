@@ -4,10 +4,17 @@ from boomapp.can_twin import ESP32DigitalTwin
 from boomapp.mqtt_bridge import MQTTBridge
 
 class VehicleSimulator:
-    def __init__(self, scenario_file, use_mqtt=True, broker="localhost"):
+    def __init__(self, scenario_file, use_mqtt=True, broker="localhost", 
+                 port=1883, username=None, password=None, use_tls=False):
         self.mqtt = None
         if use_mqtt:
-            self.mqtt = MQTTBridge(broker=broker)
+            self.mqtt = MQTTBridge(
+                broker=broker, 
+                port=port,
+                username=username,
+                password=password,
+                use_tls=use_tls
+            )
             self.mqtt.connect()
             self.mqtt.set_command_callback(self._handle_command)
         
@@ -90,13 +97,42 @@ if __name__ == "__main__":
         use_mqtt = input().lower() == 's'
         
         broker = "localhost"
+        port = 1883
+        username = None
+        password = None
+        use_tls = False
+        
         if use_mqtt:
-            print("Broker (localhost/test.mosquitto.org): ", end="")
+            print("Broker (localhost/HiveMQ): ", end="")
             broker_input = input().strip()
             if broker_input:
                 broker = broker_input
+            
+            # Si no es localhost, preguntar por credenciales
+            if broker != "localhost":
+                print("¿Usar TLS? (s/n): ", end="")
+                use_tls = input().lower() == 's'
+                
+                if use_tls:
+                    port = 8883
+                
+                print("Usuario (Enter para omitir): ", end="")
+                username = input().strip() or None
+                
+                if username:
+                    print("Contraseña: ", end="")
+                    import getpass
+                    password = getpass.getpass("")
         
-        sim = VehicleSimulator(file, use_mqtt=use_mqtt, broker=broker)
+        sim = VehicleSimulator(
+            file, 
+            use_mqtt=use_mqtt, 
+            broker=broker,
+            port=port,
+            username=username,
+            password=password,
+            use_tls=use_tls
+        )
         sim.run(duration=30)
     else:
         print("Opción inválida")

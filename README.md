@@ -238,9 +238,34 @@ API REST + WebSocket:
 
 ## Troubleshooting
 
-### Error: "Connection refused" en MQTT
-- Verificar que Mosquitto esté corriendo: `mosquitto -v`
-- Verificar puerto 1883 disponible: `netstat -an | findstr 1883`
+### Error: "Connection refused" o Timeout en MQTT
+
+**Verificar que Mosquitto esté corriendo:**
+```bash
+mosquitto -v
+```
+
+**Verificar puerto 1883:**
+```bash
+# Windows
+netstat -an | findstr 1883
+
+# Linux/Mac
+netstat -an | grep 1883
+```
+
+**Probar conexión:**
+```bash
+# Windows (instalar telnet primero)
+telnet localhost 1883
+
+# Linux/Mac
+telnet localhost 1883
+```
+
+**Si el firewall bloquea:**
+- Windows: Permitir puerto 1883 en Windows Defender
+- Antivirus: Añadir excepción para Mosquitto
 
 ### Error: "Address already in use" en Backend
 - Puerto 8000 ocupado, usar otro: `uvicorn app.main:app --port 8001`

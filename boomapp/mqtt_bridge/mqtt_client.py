@@ -1,16 +1,29 @@
 import json
 import time
 import threading
+import socket
 import paho.mqtt.client as mqtt
 
 class MQTTBridge:
-    def __init__(self, broker="localhost", port=1883, client_id="boomapp_twin"):
+    def __init__(self, broker="localhost", port=1883, client_id="boomapp_twin", 
+                 username=None, password=None, use_tls=False):
         self.broker = broker
         self.port = port
         self.client_id = client_id
+        self.username = username
+        self.password = password
+        self.use_tls = use_tls
         self.client = mqtt.Client(client_id=client_id)
         self.connected = False
         self.running = False
+        
+        # Configurar autenticación si se proporciona
+        if self.username and self.password:
+            self.client.username_pw_set(self.username, self.password)
+        
+        # Configurar TLS si se requiere
+        if self.use_tls:
+            self.client.tls_set()
         
         # Topics
         self.topic_telemetry = "boomapp/vehicle/telemetry"
@@ -33,7 +46,14 @@ class MQTTBridge:
             self.client.subscribe(self.topic_commands)
             print(f"✓ Suscrito a: {self.topic_commands}")
         else:
-            print(f"✗ Error de conexión MQTT: {rc}")
+            error_messages = {
+                1: "Versión de protocolo incorrecta",
+                2: "Identificador de cliente inválido",
+                3: "Servidor no disponible",
+                4: "Usuario/contraseña incorrectos",
+                5: "No autorizado"
+            }
+            print(f"✗ Error de conexión MQTT (código {rc}): {error_messages.get(rc, 'Error desconocido')}")
     
     def _on_disconnect(self, client, userdata, rc):
         self.connected = False
@@ -50,12 +70,37 @@ class MQTTBridge:
     
     def connect(self):
         try:
+            tls_str = " (TLS)" if self.use_tls else ""
+            auth_str = f" como {self.username}" if self.username else ""
+            print(f"Conectando a {self.broker}:{self.port}{tls_str}{auth_str}...")
             self.client.connect(self.broker, self.port, 60)
             self.running = True
             threading.Thread(target=self.client.loop_forever, daemon=True).start()
-            time.sleep(1)
+            
+            # Esperar hasta que se conecte (máximo 10 segundos)
+            timeout = 10
+            start = time.time()
+            while not self.connected and (time.time() - start) < timeout:
+                time.sleep(0.1)
+            
+            if not self.connected:
+                print(f"✗ Timeout conectando al broker después de {timeout}s")
+                print(f"\nPosibles causas:")
+                print(f"  1. Mosquitto no está corriendo (ejecuta: mosquitto -v)")
+                print(f"  2. Firewall bloqueando puerto 1883")
+                print(f"  3. Broker incorrecto (verifica: {self.broker})")
+                print(f"\nPrueba: telnet {self.broker} {self.port}")
+        except ConnectionRefusedError:
+            print(f"✗ Conexión rechazada: El broker no está escuchando en {self.broker}:{self.port}")
+            print(f"  → Asegúrate de que Mosquitto esté corriendo: mosquitto -v")
+        except socket.gaierror:
+            print(f"✗ No se puede resolver el host: {self.broker}")
+            print(f"  → Verifica que el nombre del broker sea correcto")
+        except socket.timeout:
+            print(f"✗ Timeout de conexión: No se puede alcanzar {self.broker}:{self.port}")
+            print(f"  → Verifica tu conexión a internet o firewall")
         except Exception as e:
-            print(f"Error conectando al broker: {e}")
+            print(f"✗ Error conectando al broker: {type(e).__name__}: {e}")
     
     def disconnect(self):
         self.running = False

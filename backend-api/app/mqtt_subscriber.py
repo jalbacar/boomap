@@ -7,8 +7,20 @@ class MQTTSubscriber:
     def __init__(self, broker=None, port=1883, on_obd_data=None, on_sensor_data=None):
         self.broker = broker or os.getenv("MQTT_BROKER", "localhost")
         self.port = int(os.getenv("MQTT_PORT", port))
+        self.username = os.getenv("MQTT_USERNAME")
+        self.password = os.getenv("MQTT_PASSWORD")
+        self.use_tls = os.getenv("MQTT_USE_TLS", "false").lower() == "true"
+        
         self.client = mqtt.Client(client_id="boomapp_backend")
         self.connected = False
+        
+        # Configurar autenticación
+        if self.username and self.password:
+            self.client.username_pw_set(self.username, self.password)
+        
+        # Configurar TLS
+        if self.use_tls:
+            self.client.tls_set()
         
         self.on_obd_data = on_obd_data
         self.on_sensor_data = on_sensor_data
