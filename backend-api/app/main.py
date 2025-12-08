@@ -2,6 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import json
+import os
 from .mqtt_subscriber import MQTTSubscriber
 from .models import VehicleStatus, OBDData, SensorData
 
@@ -27,7 +28,8 @@ active_connections = []
 
 # Inicializar suscriptor MQTT
 mqtt_sub = MQTTSubscriber(
-    broker="localhost",
+    broker=os.getenv("MQTT_BROKER", "localhost"),
+    port=int(os.getenv("MQTT_PORT", "1883")),
     on_obd_data=lambda data: update_vehicle_state("obd", data),
     on_sensor_data=lambda data: update_vehicle_state("sensors", data)
 )
@@ -57,6 +59,15 @@ async def shutdown_event():
 @app.get("/")
 def root():
     return {"message": "BoomApp Backend API", "version": "1.0.0"}
+
+@app.get("/api/debug/mqtt")
+def debug_mqtt():
+    return {
+        "broker": mqtt_sub.broker,
+        "port": mqtt_sub.port,
+        "connected": mqtt_sub.connected,
+        "vehicle_state": vehicle_state
+    }
 
 @app.get("/api/vehicle/status")
 def get_vehicle_status():
