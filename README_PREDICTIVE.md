@@ -301,6 +301,65 @@ Nuevos tipos de mensajes:
 }
 ```
 
+## 💰 Estimación de Costes (CostEstimator)
+
+El sistema incluye estimación de costes de reparación basados en precios de talleres de precio medio en España.
+
+### Catálogo de Precios
+
+| Componente | Preventivo | Menor | Mayor | Crítico |
+|------------|------------|-------|-------|---------|
+| **Motor** | 80€ | 218€ | 530€ | 1.350€+ |
+| **Frenos** | 23€ | 105€ | 270€ | 630€ |
+| **Transmisión** | 125€ | 380€ | 720€ | 1.875€ |
+| **Neumáticos** | 34€ | 38€ | 135€ | 428€ |
+| **Batería** | 19€ | 23€ | 143€ | 248€ |
+
+### Endpoints de Costes
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/costs/estimate` | Estimación total de costes |
+| `GET /api/costs/by-component/{name}` | Coste por componente |
+| `GET /api/costs/by-urgency` | Costes por nivel de urgencia |
+| `GET /api/costs/savings` | Ahorro potencial con mantenimiento preventivo |
+| `GET /api/costs/summary` | Resumen completo |
+
+### Ejemplo de Salida
+
+```
+🔮 [PRONÓSTICO] 2 predicciones de riesgo alto/crítico detectadas:
+   ⚠️ tires: high_speed_wear - Tiempo estimado: ~105h
+   ⚠️ battery: heat_degradation - Tiempo estimado: ~1010h
+💰 [COSTE ESTIMADO] 1100.00€ (rango: 880.00€ - 1320.00€)
+   💡 Ahorro potencial con mantenimiento preventivo: 879.00€
+```
+
+### Respuesta JSON
+
+```json
+{
+  "total_estimated": {
+    "min": 880.00,
+    "max": 1320.00,
+    "average": 1100.00
+  },
+  "potential_savings_if_preventive": 879.00,
+  "repairs": [
+    {
+      "component": "tires",
+      "repair_type": "high_speed_wear",
+      "description": "Cambio 2 neumáticos + alineación",
+      "cost_range": {"min": 216, "max": 324, "average": 270},
+      "breakdown": {"parts": 180, "labor": 67.5, "labor_hours": 1.5},
+      "urgency": "recommended",
+      "savings_if_preventive": 225.00
+    }
+  ],
+  "currency": "EUR"
+}
+```
+
 ## Próximos Pasos
 
 - [ ] Modelos ML para predicción avanzada

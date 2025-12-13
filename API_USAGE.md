@@ -500,6 +500,63 @@ python main.py
 
 ---
 
+## 🧠 API de Predicciones
+
+### Endpoints de Predicciones
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/predictions/status` | Estado completo de predicciones y desgaste |
+| `GET /api/predictions/wear` | Estado de desgaste de componentes |
+| `GET /api/predictions/alerts` | Alertas activas del sistema |
+| `GET /api/predictions/component/{name}` | Desgaste de componente específico |
+
+### Endpoints de Pronósticos Futuros
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/forecasts/status` | Estado completo de pronósticos |
+| `GET /api/forecasts/predictions` | Todas las predicciones futuras |
+| `GET /api/forecasts/component/{name}` | Pronóstico de componente específico |
+| `GET /api/forecasts/high-risk` | Solo predicciones de alto riesgo |
+| `GET /api/forecasts/recommendations` | Recomendaciones de mantenimiento |
+
+### Endpoints de Costes (€)
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/costs/estimate` | Estimación total de costes de reparación |
+| `GET /api/costs/by-component/{name}` | Coste por componente |
+| `GET /api/costs/by-urgency` | Costes agrupados por urgencia |
+| `GET /api/costs/savings` | Ahorro potencial con mantenimiento preventivo |
+| `GET /api/costs/summary` | Resumen completo de costes |
+
+### Ejemplo de Respuesta de Costes
+
+```json
+{
+  "total_estimated": {
+    "min": 880.00,
+    "max": 1320.00,
+    "average": 1100.00
+  },
+  "potential_savings": 879.00,
+  "repair_count": 2,
+  "repairs": [
+    {
+      "component": "tires",
+      "repair_type": "high_speed_wear",
+      "description": "Cambio 2 neumáticos + alineación",
+      "cost_range": {"min": 216, "max": 324, "average": 270},
+      "urgency": "recommended"
+    }
+  ],
+  "currency": "EUR"
+}
+```
+
+---
+
 ## 🚀 Próximos Pasos
 
 1. Implementar autenticación JWT

@@ -250,11 +250,19 @@ Puente MQTT para comunicación IoT:
 - Recepción de comandos
 - Topics organizados
 
+### 🧠 predictive_brain
+Cerebro de mantenimiento predictivo:
+- Análisis de desgaste de componentes
+- Predicciones de problemas futuros
+- Alertas multinivel (info, warning, critical, emergency)
+- Estimación de costes de reparación (€)
+
 ### 🌐 backend-api
 API REST + WebSocket:
 - Endpoints REST para consultas
 - WebSocket para streaming en tiempo real
 - Suscriptor MQTT
+- Endpoints de predicciones y costes
 - CORS habilitado
 
 ## Escenarios de Simulación
@@ -306,11 +314,12 @@ telnet localhost 1883
 
 ## Próximos Pasos
 
+- [x] ~~Backend IA (PaaS)~~ → Implementado como `predictive_brain`
 - [ ] App Android
-- [ ] Backend IA (PaaS)
 - [ ] Base de datos para histórico
 - [ ] Autenticación JWT
 - [ ] Dashboard Web
+- [ ] Notificaciones push
 
 ## Documentación
 
