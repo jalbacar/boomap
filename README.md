@@ -8,10 +8,12 @@ Sistema completo de gemelo digital vehicular con arquitectura IoT.
 BOOMApp/
 ├── boomapp/              # Paquete Python principal
 │   ├── can_twin/         # Módulo Digital Twin (ESP32 + CAN + OBD)
-│   └── mqtt_bridge/      # Módulo MQTT Bridge
+│   ├── mqtt_bridge/      # Módulo MQTT Bridge
+│   └── predictive_brain/ # Módulo Cerebro Predictivo (IA)
 ├── backend-api/          # Backend API REST + WebSocket
 ├── data/                 # Escenarios CSV de simulación
-└── main.py              # Simulador principal
+├── main.py               # Simulador principal
+└── run_predictive_brain.py  # Ejecutar cerebro predictivo
 ```
 
 ## Arquitectura Completa
@@ -313,6 +315,7 @@ telnet localhost 1883
 ## Documentación
 
 - [Uso del API REST y WebSocket](API_USAGE.md) ⭐ **Nuevo**
+- [Cerebro Predictivo](README_PREDICTIVE.md) 🧠 **Nuevo**
 - [MQTT Bridge](README_MQTT.md)
 - [Backend API](backend-api/README.md)
 - [Configuración HiveMQ](HIVEMQ_SETUP.md)

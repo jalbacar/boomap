@@ -1,3 +1,4 @@
 python-can
 paho-mqtt
 numpy
+python-dotenv

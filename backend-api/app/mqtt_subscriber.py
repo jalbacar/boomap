@@ -4,7 +4,8 @@ import threading
 import os
 
 class MQTTSubscriber:
-    def __init__(self, broker=None, port=1883, on_obd_data=None, on_sensor_data=None):
+    def __init__(self, broker=None, port=1883, on_obd_data=None, on_sensor_data=None,
+                 on_prediction_data=None, on_alert_data=None):
         self.broker = broker or os.getenv("MQTT_BROKER", "localhost")
         self.port = int(os.getenv("MQTT_PORT", port))
         self.username = os.getenv("MQTT_USERNAME")
@@ -24,6 +25,8 @@ class MQTTSubscriber:
         
         self.on_obd_data = on_obd_data
         self.on_sensor_data = on_sensor_data
+        self.on_prediction_data = on_prediction_data
+        self.on_alert_data = on_alert_data
         
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
@@ -35,7 +38,9 @@ class MQTTSubscriber:
             print(f"✓ Backend conectado al MQTT Broker: {self.broker}:{self.port}")
             self.client.subscribe("boomapp/vehicle/obd")
             self.client.subscribe("boomapp/vehicle/sensors")
-            print("✓ Suscrito a topics del vehículo")
+            self.client.subscribe("boomapp/predictions/wear")
+            self.client.subscribe("boomapp/predictions/alerts")
+            print("✓ Suscrito a topics del vehículo y predicciones")
         else:
             print(f"✗ Error conectando al MQTT: {rc}")
     
@@ -51,6 +56,10 @@ class MQTTSubscriber:
                 self.on_obd_data(data)
             elif msg.topic == "boomapp/vehicle/sensors" and self.on_sensor_data:
                 self.on_sensor_data(data)
+            elif msg.topic == "boomapp/predictions/wear" and self.on_prediction_data:
+                self.on_prediction_data(data)
+            elif msg.topic == "boomapp/predictions/alerts" and self.on_alert_data:
+                self.on_alert_data(data)
                 
         except Exception as e:
             print(f"Error procesando mensaje MQTT: {e}")

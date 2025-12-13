@@ -1,11 +1,22 @@
 import time
 import csv
+import os
+from dotenv import load_dotenv
 from boomapp.can_twin import ESP32DigitalTwin
 from boomapp.mqtt_bridge import MQTTBridge
 
+# Cargar variables de entorno desde .env
+load_dotenv()
+
 class VehicleSimulator:
-    def __init__(self, scenario_file, use_mqtt=True, broker="localhost", 
-                 port=1883, username=None, password=None, use_tls=False):
+    def __init__(self, scenario_file, use_mqtt=True):
+        # Leer configuración MQTT desde variables de entorno
+        broker = os.getenv("MQTT_BROKER", "localhost")
+        port = int(os.getenv("MQTT_PORT", "1883"))
+        username = os.getenv("MQTT_USERNAME")
+        password = os.getenv("MQTT_PASSWORD")
+        use_tls = os.getenv("MQTT_USE_TLS", "false").lower() == "true"
+        
         self.mqtt = None
         if use_mqtt:
             self.mqtt = MQTTBridge(
@@ -81,8 +92,15 @@ if __name__ == "__main__":
         "6": ("data/overheating.csv", "Sobrecalentamiento")
     }
     
+    # Mostrar configuración MQTT desde .env
+    broker = os.getenv("MQTT_BROKER", "localhost")
+    port = os.getenv("MQTT_PORT", "1883")
+    use_tls = os.getenv("MQTT_USE_TLS", "false").lower() == "true"
+    
     print("=== SIMULADOR DE VEHÍCULO - BoomApp ===\n")
-    print("Seleccione un escenario:")
+    print(f"MQTT Broker: {broker}:{port} (TLS: {'Sí' if use_tls else 'No'})")
+    print("-" * 40)
+    print("\nSeleccione un escenario:")
     for key, (_, desc) in scenarios.items():
         print(f"{key}. {desc}")
     
@@ -92,47 +110,7 @@ if __name__ == "__main__":
         file, desc = scenarios[choice]
         print(f"\nCargando escenario: {desc}")
         
-        # Configurar broker MQTT
-        print("\n¿Usar broker MQTT? (s/n): ", end="")
-        use_mqtt = input().lower() == 's'
-        
-        broker = "localhost"
-        port = 1883
-        username = None
-        password = None
-        use_tls = False
-        
-        if use_mqtt:
-            print("Broker (localhost/HiveMQ): ", end="")
-            broker_input = input().strip()
-            if broker_input:
-                broker = broker_input
-            
-            # Si no es localhost, preguntar por credenciales
-            if broker != "localhost":
-                print("¿Usar TLS? (s/n): ", end="")
-                use_tls = input().lower() == 's'
-                
-                if use_tls:
-                    port = 8883
-                
-                print("Usuario (Enter para omitir): ", end="")
-                username = input().strip() or None
-                
-                if username:
-                    print("Contraseña: ", end="")
-                    import getpass
-                    password = getpass.getpass("")
-        
-        sim = VehicleSimulator(
-            file, 
-            use_mqtt=use_mqtt, 
-            broker=broker,
-            port=port,
-            username=username,
-            password=password,
-            use_tls=use_tls
-        )
+        sim = VehicleSimulator(file, use_mqtt=True)
         sim.run(duration=30)
     else:
         print("Opción inválida")
