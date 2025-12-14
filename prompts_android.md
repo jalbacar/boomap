@@ -1,6 +1,6 @@
 # 🤖 Prompts para Desarrollo App Android BOOMApp
 
-Prompts estructurados para construir la app Android con **Kotlin**, **Clean Architecture**, **MVVM**, **Jetpack Compose** y **Koin**.
+Prompts estructurados para construir la app Android con **Kotlin**, **Clean Architecture**, **MVVM**, **Jetpack Compose**, **Koin** y **Ktor**.
 
 ---
 
@@ -11,7 +11,7 @@ Prompts estructurados para construir la app Android con **Kotlin**, **Clean Arch
 3. [Capa Domain - Modelos y casos de uso](#prompt-3-capa-domain)
 4. [Capa Data - Repositorios y fuentes de datos](#prompt-4-capa-data)
 5. [Configuración Koin (DI)](#prompt-5-configuración-koin)
-6. [Cliente REST con Retrofit](#prompt-6-cliente-rest)
+6. [Cliente REST con Ktor](#prompt-6-cliente-rest-ktor)
 7. [Cliente MQTT con Paho](#prompt-7-cliente-mqtt)
 8. [Pantalla Dashboard](#prompt-8-pantalla-dashboard)
 9. [Pantalla Alertas](#prompt-9-pantalla-alertas)
@@ -36,18 +36,20 @@ Crea un proyecto Android con las siguientes características:
 - UI: Jetpack Compose con Material 3
 - Arquitectura: Clean Architecture + MVVM
 - Inyección de dependencias: Koin
+- Cliente HTTP: Ktor
 
 Configura el build.gradle.kts (project y app) con las siguientes dependencias:
 
 1. Jetpack Compose (BOM 2024.01.00)
 2. Material 3
 3. Navigation Compose
-4. Retrofit 2.9.0 + OkHttp 4.12.0 + Gson converter
+4. Ktor Client 2.3.7 (ktor-client-android, ktor-client-content-negotiation, ktor-serialization-kotlinx-json, ktor-client-logging)
 5. Koin 3.5.0 (koin-android, koin-androidx-compose)
 6. Coroutines 1.7.3
 7. ViewModel Compose
 8. Eclipse Paho MQTT Android 1.2.5
-9. Coil para imágenes (opcional)
+9. Kotlinx Serialization 1.6.2
+10. Coil para imágenes (opcional)
 
 Incluye los permisos necesarios en AndroidManifest.xml:
 - INTERNET
@@ -343,40 +345,83 @@ Usa las siguientes convenciones de Koin:
 
 ---
 
-## Prompt 6: Cliente REST
+## Prompt 6: Cliente REST (Ktor)
 
 ```
-Implementa el cliente REST completo con Retrofit para BOOMApp.
+Implementa el cliente REST completo con Ktor para BOOMApp.
 
 1. Crea NetworkModule.kt con:
 
 val networkModule = module {
     single {
-        HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+        HttpClient(Android) {
+            install(ContentNegotiation) {
+                json(Json {
+                    prettyPrint = true
+                    isLenient = true
+                    ignoreUnknownKeys = true
+                })
+            }
+            
+            install(Logging) {
+                logger = Logger.ANDROID
+                level = LogLevel.BODY
+            }
+            
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 30_000
+            }
+            
+            defaultRequest {
+                url(Constants.BASE_URL)
+                contentType(ContentType.Application.Json)
+            }
         }
     }
     
-    single {
-        OkHttpClient.Builder()
-            .addInterceptor(get<HttpLoggingInterceptor>())
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
-    
-    single {
-        Retrofit.Builder()
-            .baseUrl(Constants.BASE_URL)
-            .client(get())
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-    }
-    
-    single { get<Retrofit>().create(BoomApiService::class.java) }
+    single { BoomApiService(get()) }
 }
 
-2. Crea util/Resource.kt:
+2. Crea data/remote/api/BoomApiService.kt con Ktor:
+
+class BoomApiService(private val client: HttpClient) {
+    
+    suspend fun getVehicleStatus(): VehicleStatusDto {
+        return client.get("api/vehicle/status").body()
+    }
+    
+    suspend fun getAlerts(): List<AlertDto> {
+        return client.get("api/predictions/alerts").body()
+    }
+    
+    suspend fun getForecasts(): ForecastsDto {
+        return client.get("api/forecasts/status").body()
+    }
+    
+    suspend fun getHighRiskPredictions(): List<PredictionDto> {
+        return client.get("api/forecasts/high-risk").body()
+    }
+    
+    suspend fun getRecommendations(): RecommendationsDto {
+        return client.get("api/forecasts/recommendations").body()
+    }
+    
+    suspend fun getCostEstimate(): CostEstimateDto {
+        return client.get("api/costs/estimate").body()
+    }
+    
+    suspend fun getCostByComponent(component: String): CostEstimateDto {
+        return client.get("api/costs/by-component/$component").body()
+    }
+    
+    suspend fun getCostSummary(): CostSummaryDto {
+        return client.get("api/costs/summary").body()
+    }
+}
+
+3. Crea util/Resource.kt:
 
 sealed class Resource<T>(
     val data: T? = null,
@@ -387,7 +432,7 @@ sealed class Resource<T>(
     class Loading<T>(data: T? = null) : Resource<T>(data)
 }
 
-3. Crea util/Constants.kt:
+4. Crea util/Constants.kt:
 
 object Constants {
     const val BASE_URL = "https://boomap-production.up.railway.app/"
@@ -405,7 +450,7 @@ object Constants {
     }
 }
 
-4. Implementa VehicleRepositoryImpl con manejo de errores:
+5. Implementa VehicleRepositoryImpl con manejo de errores:
 
 class VehicleRepositoryImpl(
     private val api: BoomApiService
@@ -415,18 +460,49 @@ class VehicleRepositoryImpl(
         emit(Resource.Loading())
         try {
             val response = api.getVehicleStatus()
-            if (response.isSuccessful) {
-                response.body()?.let {
-                    emit(Resource.Success(it.toDomain()))
-                } ?: emit(Resource.Error("Respuesta vacía"))
-            } else {
-                emit(Resource.Error("Error: ${response.code()}"))
-            }
+            emit(Resource.Success(response.toDomain()))
+        } catch (e: ClientRequestException) {
+            emit(Resource.Error("Error del servidor: ${e.response.status}"))
+        } catch (e: ServerResponseException) {
+            emit(Resource.Error("Error del servidor: ${e.response.status}"))
+        } catch (e: IOException) {
+            emit(Resource.Error("Error de conexión: ${e.message}"))
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Error desconocido"))
         }
     }
 }
+
+6. DTOs con Kotlinx Serialization (en lugar de Gson):
+
+@Serializable
+data class VehicleStatusDto(
+    val obd: OBDDataDto,
+    val sensors: SensorDataDto,
+    val status: String,
+    @SerialName("last_update")
+    val lastUpdate: String
+)
+
+@Serializable
+data class OBDDataDto(
+    val rpm: Int,
+    val speed: Int,
+    @SerialName("engine_temp")
+    val engineTemp: Double,
+    val throttle: Double,
+    @SerialName("fuel_level")
+    val fuelLevel: Double
+)
+
+@Serializable
+data class AlertDto(
+    val id: String,
+    val component: String,
+    val severity: String,
+    val message: String,
+    val timestamp: Long
+)
 ```
 
 ---
@@ -1519,7 +1595,6 @@ testImplementation("app.cash.turbine:turbine:1.0.0")
 androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 androidTestImplementation("io.mockk:mockk-android:1.13.8")
 debugImplementation("androidx.compose.ui:ui-test-manifest")
-```
 
 ---
 
